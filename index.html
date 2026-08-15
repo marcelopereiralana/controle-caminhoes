@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Faturamento e Gastos - Viação Satélite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; min-height: 100vh; }
+        header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8c 100%); color: white; padding: 2rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        header h1 { font-size: 28px; font-weight: 600; margin-bottom: 0.5rem; }
+        header p { font-size: 14px; opacity: 0.9; }
+        .selector-box { background: #f9f9f9; padding: 1.5rem; border-bottom: 1px solid #e0e0e0; }
+        .truck-selector { display: flex; align-items: center; gap: 12px; }
+        .truck-selector label { font-weight: 600; color: #555; font-size: 14px; }
+        .truck-selector select { padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; min-width: 200px; }
+        .tabs { display: flex; border-bottom: 2px solid #e0e0e0; background: white; overflow-x: auto; gap: 0; }
+        .tab-button { flex: 1; padding: 16px 20px; background: transparent; border: none; color: #888; font-weight: 600; font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.3s ease; }
+        .tab-button:hover { background: #f5f5f5; color: #333; }
+        .tab-button.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
+        .content { padding: 2rem 1.5rem; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .form-section { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+        .form-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 1.5rem; color: #333; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 13px; color: #666; font-weight: 500; margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1); }
+        .btn { padding: 12px 16px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
+        .btn-primary { background: #1e3a5f; color: white; }
+        .btn-primary:hover { background: #152d48; }
+        .btn-danger { background: transparent; border: 1px solid #dc3545; color: #dc3545; }
+        .btn-danger:hover { background: #fef0f0; }
+        .btn-sm { padding: 4px; font-size: 18px; width: auto; background: none; border: none; color: #dc3545; cursor: pointer; }
+        .table-container { overflow-x: auto; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead { background: #f5f5f5; border-bottom: 2px solid #e0e0e0; }
+        th { padding: 12px 8px; text-align: left; color: #666; font-weight: 600; font-size: 13px; }
+        td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; }
+        tr:hover { background: #f9f9f9; }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: #999; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+        .stat-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; text-align: center; }
+        .stat-label { font-size: 13px; color: #999; margin-bottom: 8px; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #1e3a5f; }
+        .stat-card.success .stat-value { color: #28a745; }
+        .stat-card.danger .stat-value { color: #dc3545; }
+        .stat-card.warning .stat-value { color: #ff9800; }
+        .btn-row { display: flex; gap: 12px; }
+        .btn-row .btn { flex: 1; }
+        @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } header h1 { font-size: 22px; } .tabs { gap: 0; } .tab-button { font-size: 12px; padding: 12px 14px; } .stats-grid { grid-template-columns: 1fr; } }
+        .text-right { text-align: right; }
+        .text-success { color: #28a745; }
+        .text-danger { color: #dc3545; }
+        .divider { border-bottom: 1px solid #e0e0e0; margin: 2rem 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>🚛 Controle de Faturamento e Gastos</h1><p>Viação Satélite - Gestão por veículo</p></header>
+        <div class="selector-box"><div class="truck-selector"><label for="truck-select">Caminhão:</label><select id="truck-select"><option value="top5i95">TOP5I95</option><option value="ocx7d31">OCX7D31</option></select></div></div>
+        <div class="tabs"><button class="tab-button active" data-tab="faturamento">Faturamento</button><button class="tab-button" data-tab="gastos">Gastos</button><button class="tab-button" data-tab="motorista">Motorista</button><button class="tab-button" data-tab="relatorio">Relatório</button></div>
+        <div class="content">
+            <div class="panel active" id="faturamento">
+                <div class="form-section"><h3>Novo faturamento</h3><div class="form-row"><div class="form-group"><label>Data</label><input type="date" id="fat-data"></div><div class="form-group"><label>Valor (R$)</label><input type="number" id="fat-valor" placeholder="0.00" step="0.01"></div></div><div class="form-row full"><div class="form-group"><label>Descrição</label><input type="text" id="fat-descricao" placeholder="Ex: Frete São Paulo"></div></div><button class="btn btn-primary" onclick="addFaturamento()">Adicionar faturamento</button></div>
+                <h3>Registros de faturamento</h3><div class="table-container"><table><thead><tr><th>Data</th><th class="text-right">Valor</th><th>Descrição</th><th style="width: 50px;">Ação</th></tr></thead><tbody id="fat-tabla"></tbody></table></div><div id="fat-empty" class="empty-state">Nenhum faturamento registrado</div>
+            </div>
+            <div class="panel" id="gastos">
+                <div class="form-section"><h3>Novo gasto</h3><div class="form-row"><div class="form-group"><label>Data</label><input type="date" id="gasto-data"></div><div class="form-group"><label>Valor (R$)</label><input type="number" id="gasto-valor" placeholder="0.00" step="0.01"></div></div><div class="form-row"><div class="form-group"><label>Tipo de gasto</label><select id="gasto-tipo"><option value="combustivel">Combustível</option><option value="manutencao">Manutenção</option><option value="pneu">Pneu</option><option value="pedagio">Pedágio</option><option value="estacionamento">Estacionamento</option><option value="lavagem">Lavagem</option><option value="outro">Outro</option></select></div><div class="form-group"><label>Descrição</label><input type="text" id="gasto-descricao" placeholder="Ex: Diesel Ipiranga"></div></div><button class="btn btn-primary" onclick="addGasto()">Adicionar gasto</button></div>
+                <h3>Registros de gastos</h3><div class="table-container"><table><thead><tr><th>Data</th><th>Tipo</th><th class="text-right">Valor</th><th>Descrição</th><th style="width: 50px;">Ação</th></tr></thead><tbody id="gasto-tabla"></tbody></table></div><div id="gasto-empty" class="empty-state">Nenhum gasto registrado</div>
+            </div>
+            <div class="panel" id="motorista">
+                <div class="form-section"><h3>Configuração de comissão</h3><div class="form-row"><div class="form-group"><label>Tipo de comissão</label><select id="motor-tipo-comissao"><option value="percentual">Percentual (%)</option><option value="fixo">Valor fixo (R$)</option></select></div><div class="form-group"><label>Valor</label><input type="number" id="motor-valor-comissao" placeholder="Ex: 10 ou 500" step="0.01"></div></div><button class="btn btn-primary" onclick="setComissao()">Salvar configuração</button></div>
+                <div class="form-section"><h3>Registrar adiantamento</h3><div class="form-row"><div class="form-group"><label>Data</label><input type="date" id="adian-data"></div><div class="form-group"><label>Valor (R$)</label><input type="number" id="adian-valor" placeholder="0.00" step="0.01"></div></div><div class="form-row full"><div class="form-group"><label>Observação</label><input type="text" id="adian-obs" placeholder="Ex: Adiantamento semanal"></div></div><button class="btn btn-primary" onclick="addAdiantamento()">Adicionar adiantamento</button></div>
+                <h3>Histórico de adiantamentos</h3><div class="table-container"><table><thead><tr><th>Data</th><th class="text-right">Valor</th><th>Observação</th><th style="width: 50px;">Ação</th></tr></thead><tbody id="adian-tabla"></tbody></table></div><div id="adian-empty" class="empty-state">Nenhum adiantamento registrado</div>
+            </div>
+            <div class="panel" id="relatorio">
+                <div class="stats-grid"><div class="stat-card success"><div class="stat-label">Total faturado</div><div class="stat-value" id="rel-total-fat">R$ 0,00</div></div><div class="stat-card danger"><div class="stat-label">Total gasto</div><div class="stat-value" id="rel-total-gasto">R$ 0,00</div></div><div class="stat-card"><div class="stat-label">Lucro</div><div class="stat-value" id="rel-lucro">R$ 0,00</div></div></div>
+                <div class="stats-grid"><div class="stat-card"><div class="stat-label">Comissão do motorista</div><div class="stat-value" id="rel-comissao">R$ 0,00</div></div><div class="stat-card warning"><div class="stat-label">Adiantamentos dados</div><div class="stat-value" id="rel-adiantamentos">R$ 0,00</div></div></div>
+                <div class="form-section"><h3>Resumo financeiro do motorista</h3><div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;"><div><div class="stat-label">Comissão devida</div><div class="stat-value" id="rel-comissao-devida">R$ 0,00</div></div><div><div class="stat-label">Já adiantado</div><div class="stat-value" id="rel-ja-adiantado">R$ 0,00</div></div><div style="background: white; border-left: 3px solid #1e3a5f; padding-left: 12px;"><div class="stat-label">Saldo a pagar</div><div class="stat-value" id="rel-saldo-motorista">R$ 0,00</div></div></div></div>
+                <div class="form-section"><h3>Resumo por tipo de gasto</h3><div id="rel-resumo"><div class="empty-state">Sem gastos registrados</div></div></div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="exportarDados()">📥 Exportar dados (CSV)</button><button class="btn btn-danger" onclick="limparTudo()">🗑 Limpar tudo</button></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let data = JSON.parse(localStorage.getItem('truckData') || '{"top5i95":{"faturamento":[],"gastos":[],"adiantamentos":[],"comissao":{"tipo":"percentual","valor":10}},"ocx7d31":{"faturamento":[],"gastos":[],"adiantamentos":[],"comissao":{"tipo":"percentual","valor":10}}}');
+        function saveData(){localStorage.setItem('truckData', JSON.stringify(data));}
+        function getTruck(){return document.getElementById('truck-select').value;}
+        function formatCurrency(value){return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);}
+        document.querySelectorAll('.tab-button').forEach(button=>{button.addEventListener('click', (e)=>{const tabName=e.target.dataset.tab;document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-button').forEach(b=>b.classList.remove('active'));document.getElementById(tabName).classList.add('active');e.target.classList.add('active');if(tabName==='relatorio')renderRelatorio();});});
+        document.getElementById('truck-select').addEventListener('change', ()=>{const truck=getTruck();const comissao=data[truck].comissao;document.getElementById('motor-tipo-comissao').value=comissao.tipo;document.getElementById('motor-valor-comissao').value=comissao.valor;renderFaturamento();renderGastos();renderAdiantamentos();renderRelatorio();});
+        function addFaturamento(){const dataVal=document.getElementById('fat-data').value;const valor=parseFloat(document.getElementById('fat-valor').value);const desc=document.getElementById('fat-descricao').value;if(!dataVal||!valor||valor<=0){alert('Preencha todos os campos corretamente');return;}const truck=getTruck();data[truck].faturamento.push({data:dataVal,valor,descricao:desc});saveData();document.getElementById('fat-data').value='';document.getElementById('fat-valor').value='';document.getElementById('fat-descricao').value='';renderFaturamento();renderRelatorio();}
+        function renderFaturamento(){const truck=getTruck();const fats=data[truck].faturamento;const tbody=document.getElementById('fat-tabla');const empty=document.getElementById('fat-empty');if(fats.length===0){tbody.innerHTML='';empty.style.display='block';return;}empty.style.display='none';tbody.innerHTML=fats.map((f,i)=>`<tr><td>${f.data}</td><td class="text-right">${formatCurrency(f.valor)}</td><td>${f.descricao}</td><td><button class="btn-sm" onclick="deleteFat(${i})">×</button></td></tr>`).join('');}
+        function deleteFat(i){const truck=getTruck();data[truck].faturamento.splice(i,1);saveData();renderFaturamento();renderRelatorio();}
+        function addGasto(){const dataVal=document.getElementById('gasto-data').value;const valor=parseFloat(document.getElementById('gasto-valor').value);const tipo=document.getElementById('gasto-tipo').value;const desc=document.getElementById('gasto-descricao').value;if(!dataVal||!valor||valor<=0){alert('Preencha todos os campos corretamente');return;}const truck=getTruck();data[truck].gastos.push({data:dataVal,valor,tipo,descricao:desc});saveData();document.getElementById('gasto-data').value='';document.getElementById('gasto-valor').value='';document.getElementById('gasto-descricao').value='';renderGastos();renderRelatorio();}
+        function renderGastos(){const truck=getTruck();const gastos=data[truck].gastos;const tbody=document.getElementById('gasto-tabla');const empty=document.getElementById('gasto-empty');if(gastos.length===0){tbody.innerHTML='';empty.style.display='block';return;}empty.style.display='none';tbody.innerHTML=gastos.map((g,i)=>`<tr><td>${g.data}</td><td>${g.tipo}</td><td class="text-right">${formatCurrency(g.valor)}</td><td>${g.descricao}</td><td><button class="btn-sm" onclick="deleteGasto(${i})">×</button></td></tr>`).join('');}
+        function deleteGasto(i){const truck=getTruck();data[truck].gastos.splice(i,1);saveData();renderGastos();renderRelatorio();}
+        function addAdiantamento(){const dataVal=document.getElementById('adian-data').value;const valor=parseFloat(document.getElementById('adian-valor').value);const obs=document.getElementById('adian-obs').value;if(!dataVal||!valor||valor<=0){alert('Preencha todos os campos corretamente');return;}const truck=getTruck();data[truck].adiantamentos.push({data:dataVal,valor,obs});saveData();document.getElementById('adian-data').value='';document.getElementById('adian-valor').value='';document.getElementById('adian-obs').value='';renderAdiantamentos();renderRelatorio();}
+        function renderAdiantamentos(){const truck=getTruck();const adians=data[truck].adiantamentos;const tbody=document.getElementById('adian-tabla');const empty=document.getElementById('adian-empty');if(adians.length===0){tbody.innerHTML='';empty.style.display='block';return;}empty.style.display='none';tbody.innerHTML=adians.map((a,i)=>`<tr><td>${a.data}</td><td class="text-right">${formatCurrency(a.valor)}</td><td>${a.obs}</td><td><button class="btn-sm" onclick="deleteAdia(${i})">×</button></td></tr>`).join('');}
+        function deleteAdia(i){const truck=getTruck();data[truck].adiantamentos.splice(i,1);saveData();renderAdiantamentos();renderRelatorio();}
+        function setComissao(){const tipo=document.getElementById('motor-tipo-comissao').value;const valor=parseFloat(document.getElementById('motor-valor-comissao').value);if(!valor||valor<=0){alert('Digite um valor válido');return;}const truck=getTruck();data[truck].comissao={tipo,valor};saveData();alert('Configuração salva com sucesso!');renderRelatorio();}
+        function renderRelatorio(){const truck=getTruck();const fats=data[truck].faturamento;const gastos=data[truck].gastos;const adians=data[truck].adiantamentos;const comissao=data[truck].comissao;const totalFat=fats.reduce((sum,f)=>sum+f.valor,0);const totalGasto=gastos.reduce((sum,g)=>sum+g.valor,0);const totalAdian=adians.reduce((sum,a)=>sum+a.valor,0);const lucro=totalFat-totalGasto;let comissaoDev=0;if(comissao.tipo==='percentual'){comissaoDev=(totalFat*comissao.valor)/100;}else{comissaoDev=comissao.valor*fats.length;}const saldoMotor=comissaoDev-totalAdian;document.getElementById('rel-total-fat').textContent=formatCurrency(totalFat);document.getElementById('rel-total-gasto').textContent=formatCurrency(totalGasto);document.getElementById('rel-comissao').textContent=formatCurrency(comissaoDev);document.getElementById('rel-adiantamentos').textContent=formatCurrency(totalAdian);document.getElementById('rel-comissao-devida').textContent=formatCurrency(comissaoDev);document.getElementById('rel-ja-adiantado').textContent=formatCurrency(totalAdian);const lucroEl=document.getElementById('rel-lucro');lucroEl.textContent=formatCurrency(lucro);lucroEl.style.color=lucro>=0?'#28a745':'#dc3545';const saldoEl=document.getElementById('rel-saldo-motorista');saldoEl.textContent=formatCurrency(saldoMotor);saldoEl.style.color=saldoMotor>=0?'#dc3545':'#28a745';const resumoEl=document.getElementById('rel-resumo');const tiposMap={};gastos.forEach(g=>{tiposMap[g.tipo]=(tiposMap[g.tipo]||0)+g.valor;});if(Object.keys(tiposMap).length===0){resumoEl.innerHTML='<div class="empty-state">Sem gastos registrados</div>';}else{resumoEl.innerHTML=Object.entries(tiposMap).map(([tipo,valor])=>`<div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e0e0e0;"><span style="text-transform: capitalize;">${tipo}</span><span style="font-weight: 600;">${formatCurrency(valor)}</span></div>`).join('');}}
+        function exportarDados(){const truck=getTruck();const fats=data[truck].faturamento;const gastos=data[truck].gastos;const adians=data[truck].adiantamentos;let csv='Data,Tipo,Valor,Descrição\n';fats.forEach(f=>{csv+=`${f.data},Faturamento,${f.valor},"${f.descricao}"\n`;});gastos.forEach(g=>{csv+=`${g.data},${g.tipo},${g.valor},"${g.descricao}"\n`;});adians.forEach(a=>{csv+=`${a.data},Adiantamento,${a.valor},"${a.obs}"\n`;});const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`relatorio_${truck}_${new Date().toISOString().split('T')[0]}.csv`;link.click();}
+        function limparTudo(){if(confirm('Tem certeza que deseja limpar todos os dados deste caminhão? Esta ação não pode ser desfeita.')){const truck=getTruck();data[truck]={faturamento:[],gastos:[],adiantamentos:[],comissao:{tipo:'percentual',valor:10}};saveData();renderFaturamento();renderGastos();renderAdiantamentos();renderRelatorio();alert('Dados limpos com sucesso!');}}
+        const truck=getTruck();const comissao=data[truck].comissao;document.getElementById('motor-tipo-comissao').value=comissao.tipo;document.getElementById('motor-valor-comissao').value=comissao.valor;renderFaturamento();renderGastos();renderAdiantamentos();renderRelatorio();
+    </script>
+</body>
+</html>
