@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Faturamento e Gastos</title>
+    <title>Controle de Faturamento e Gastos - Viação Satélite</title>
     <style>
         * {
             margin: 0;
@@ -576,219 +576,333 @@
         </div>
     </div>
 
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    <script>
+        // Inicializar dados
+        let data = JSON.parse(localStorage.getItem('truckData') || '{"top5i95":{"faturamento":[],"gastos":[],"adiantamentos":[],"comissao":{"tipo":"percentual","valor":10}},"ocx7d31":{"faturamento":[],"gastos":[],"adiantamentos":[],"comissao":{"tipo":"percentual","valor":10}}}');
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyAL_pf8aFJP5CuefV3HlOkwPQtPaUbtDaw",
-          authDomain: "controle-caminhoes-ed00b.firebaseapp.com",
-          projectId: "controle-caminhoes-ed00b",
-          storageBucket: "controle-caminhoes-ed00b.firebasestorage.app",
-          messagingSenderId: "419475677305",
-          appId: "1:419475677305:web:912d0b42f4e87c1febf4a8"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const docRef = doc(db, "viacao_satelite", "dados");
-
-        const trucks = {
-            truck1: "Caminhão 1",
-            truck2: "Caminhão 2",
-            truck3: "Caminhão 3"
-        };
-
-        let data = {
-            truck1: { faturamento: [], gastos: [], adiantamentos: [], comissao: { tipo: 'percentual', valor: 10 } },
-            truck2: { faturamento: [], gastos: [], adiantamentos: [], comissao: { tipo: 'percentual', valor: 10 } },
-            truck3: { faturamento: [], gastos: [], adiantamentos: [], comissao: { tipo: 'percentual', valor: 10 } }
-        };
-
-        // Funções originais preservadas
-        function getTruck() { return document.getElementById('truck-select').value; }
-        function formatCurrency(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v); }
-        function formatDate(d){ if(!d) return ''; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
-
-        async function saveData(){
-            try{
-                const status = document.getElementById('cloud-status');
-                if(status) status.textContent = '☁️ Salvando na nuvem...';
-                await setDoc(docRef, {...data, atualizadoEm: serverTimestamp()}, {merge:true});
-                if(status) status.innerHTML = '<span style="display:inline-block;width:8px;height:8px;background:#00ff88;border-radius:50%;margin-right:6px;"></span> Conectado a nuvem - tempo real ✅';
-                setTimeout(()=>{ if(status) status.style.opacity='0.7'; },2000);
-            }catch(e){ alert('Erro nuvem: '+e.message); }
+        function saveData() {
+            localStorage.setItem('truckData', JSON.stringify(data));
         }
 
-        function loadData(){
-            const statusDiv = document.createElement('div');
-            statusDiv.id='cloud-status';
-            statusDiv.style.cssText='position:fixed;top:0;left:0;right:0;background:#1e3a5f;color:white;text-align:center;padding:8px;font-size:13px;z-index:9999;font-weight:600';
-            statusDiv.innerHTML='<span style="display:inline-block;width:8px;height:8px;background:#ffcc00;border-radius:50%;margin-right:6px;animation:pulse 1.5s infinite"></span> Conectando na nuvem...';
-            document.body.prepend(statusDiv);
-            const style = document.createElement('style'); style.textContent='@keyframes pulse{0%{opacity:1}50%{opacity:0.4}100%{opacity:1}}'; document.head.appendChild(style);
+        function getTruck() {
+            return document.getElementById('truck-select').value;
+        }
 
-            onSnapshot(docRef, (snap)=>{
-                if(snap.exists()){
-                    const cloud = snap.data();
-                    Object.keys(cloud).forEach(k=>{
-                        if(k==='atualizadoEm') return;
-                        data[k]=cloud[k];
-                    });
-                }
-                const truck = getTruck();
-                if(data[truck]){
-                    document.getElementById('motor-tipo-comissao').value = data[truck].comissao.tipo;
-                    document.getElementById('motor-valor-comissao').value = data[truck].comissao.valor;
-                }
-                renderFaturamento(); renderGastos(); renderAdiantamentos(); renderRelatorio();
-                const s = document.getElementById('cloud-status');
-                if(s) s.innerHTML='<span style="display:inline-block;width:8px;height:8px;background:#00ff88;border-radius:50%;margin-right:6px;"></span> ☁️ Conectado a nuvem - tempo real | dados sincronizados';
-            }, (err)=>{
-                console.error(err);
-                const s = document.getElementById('cloud-status');
-                if(s) s.innerHTML='❌ Erro nuvem: '+err.message;
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        // Abas
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+                e.target.classList.add('active');
+                if (tabName === 'relatorio') renderRelatorio();
             });
-        }
+        });
 
-        window.switchTab = function(tabName){
-            document.querySelectorAll('.tab-button').forEach(b=>b.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-        }
+        // Troca de caminhão
+        document.getElementById('truck-select').addEventListener('change', () => {
+            const truck = getTruck();
+            const comissao = data[truck].comissao;
+            document.getElementById('motor-tipo-comissao').value = comissao.tipo;
+            document.getElementById('motor-valor-comissao').value = comissao.valor;
+            renderFaturamento();
+            renderGastos();
+            renderAdiantamentos();
+            renderRelatorio();
+        });
 
-        window.addFaturamento = function(){
+        // Faturamento
+        function addFaturamento() {
             const dataVal = document.getElementById('fat-data').value;
             const valor = parseFloat(document.getElementById('fat-valor').value);
-            const desc = document.getElementById('fat-desc').value;
-            if(!dataVal || !valor || !desc){ alert('Preencha todos os campos'); return; }
+            const desc = document.getElementById('fat-descricao').value;
+
+            if (!dataVal || !valor || valor <= 0) {
+                alert('Preencha todos os campos corretamente');
+                return;
+            }
+
             const truck = getTruck();
-            data[truck].faturamento.push({data: dataVal, valor, descricao: desc});
-            saveData(); renderFaturamento(); renderRelatorio();
-            document.getElementById('fat-data').value=''; document.getElementById('fat-valor').value=''; document.getElementById('fat-desc').value='';
+            data[truck].faturamento.push({ data: dataVal, valor, descricao: desc });
+            saveData();
+
+            document.getElementById('fat-data').value = '';
+            document.getElementById('fat-valor').value = '';
+            document.getElementById('fat-descricao').value = '';
+
+            renderFaturamento();
+            renderRelatorio();
         }
-        window.renderFaturamento = function(){
+
+        function renderFaturamento() {
             const truck = getTruck();
             const fats = data[truck].faturamento;
             const tbody = document.getElementById('fat-tabla');
             const empty = document.getElementById('fat-empty');
-            if(fats.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
-            empty.style.display='none';
-            tbody.innerHTML = fats.map((f,i)=>`<tr><td>${formatDate(f.data)}</td><td class="text-right">${formatCurrency(f.valor)}</td><td>${f.descricao}</td><td><button class="btn-sm" onclick="deleteFat(${i})">×</button></td></tr>`).join('');
-        }
-        window.deleteFat = function(i){ const truck=getTruck(); data[truck].faturamento.splice(i,1); saveData(); renderFaturamento(); renderRelatorio(); }
 
-        window.addGasto = function(){
-            const dataVal = document.getElementById('gasto-data').value;
-            const tipo = document.getElementById('gasto-tipo').value;
-            const valor = parseFloat(document.getElementById('gasto-valor').value);
-            const desc = document.getElementById('gasto-desc').value;
-            if(!dataVal || !valor || !desc){ alert('Preencha todos os campos'); return; }
-            const truck = getTruck();
-            data[truck].gastos.push({data: dataVal, tipo, valor, descricao: desc});
-            saveData(); renderGastos(); renderRelatorio();
-            document.getElementById('gasto-data').value=''; document.getElementById('gasto-valor').value=''; document.getElementById('gasto-desc').value='';
+            if (fats.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            tbody.innerHTML = fats.map((f, i) => `
+                <tr>
+                    <td>${f.data}</td>
+                    <td class="text-right">${formatCurrency(f.valor)}</td>
+                    <td>${f.descricao}</td>
+                    <td><button class="btn-sm" onclick="deleteFat(${i})">×</button></td>
+                </tr>
+            `).join('');
         }
-        window.renderGastos = function(){
+
+        function deleteFat(i) {
+            const truck = getTruck();
+            data[truck].faturamento.splice(i, 1);
+            saveData();
+            renderFaturamento();
+            renderRelatorio();
+        }
+
+        // Gastos
+        function addGasto() {
+            const dataVal = document.getElementById('gasto-data').value;
+            const valor = parseFloat(document.getElementById('gasto-valor').value);
+            const tipo = document.getElementById('gasto-tipo').value;
+            const desc = document.getElementById('gasto-descricao').value;
+
+            if (!dataVal || !valor || valor <= 0) {
+                alert('Preencha todos os campos corretamente');
+                return;
+            }
+
+            const truck = getTruck();
+            data[truck].gastos.push({ data: dataVal, valor, tipo, descricao: desc });
+            saveData();
+
+            document.getElementById('gasto-data').value = '';
+            document.getElementById('gasto-valor').value = '';
+            document.getElementById('gasto-descricao').value = '';
+
+            renderGastos();
+            renderRelatorio();
+        }
+
+        function renderGastos() {
             const truck = getTruck();
             const gastos = data[truck].gastos;
             const tbody = document.getElementById('gasto-tabla');
             const empty = document.getElementById('gasto-empty');
-            if(gastos.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
-            empty.style.display='none';
-            tbody.innerHTML = gastos.map((g,i)=>`<tr><td>${formatDate(g.data)}</td><td style="text-transform:capitalize">${g.tipo}</td><td class="text-right">${formatCurrency(g.valor)}</td><td>${g.descricao}</td><td><button class="btn-sm" onclick="deleteGasto(${i})">×</button></td></tr>`).join('');
-        }
-        window.deleteGasto = function(i){ const truck=getTruck(); data[truck].gastos.splice(i,1); saveData(); renderGastos(); renderRelatorio(); }
 
-        window.addAdiantamento = function(){
+            if (gastos.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            tbody.innerHTML = gastos.map((g, i) => `
+                <tr>
+                    <td>${g.data}</td>
+                    <td>${g.tipo}</td>
+                    <td class="text-right">${formatCurrency(g.valor)}</td>
+                    <td>${g.descricao}</td>
+                    <td><button class="btn-sm" onclick="deleteGasto(${i})">×</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteGasto(i) {
+            const truck = getTruck();
+            data[truck].gastos.splice(i, 1);
+            saveData();
+            renderGastos();
+            renderRelatorio();
+        }
+
+        // Adiantamentos
+        function addAdiantamento() {
             const dataVal = document.getElementById('adian-data').value;
             const valor = parseFloat(document.getElementById('adian-valor').value);
             const obs = document.getElementById('adian-obs').value;
-            if(!dataVal || !valor){ alert('Preencha data e valor'); return; }
+
+            if (!dataVal || !valor || valor <= 0) {
+                alert('Preencha todos os campos corretamente');
+                return;
+            }
+
             const truck = getTruck();
-            data[truck].adiantamentos.push({data: dataVal, valor, obs});
-            saveData(); renderAdiantamentos(); renderRelatorio();
-            document.getElementById('adian-data').value=''; document.getElementById('adian-valor').value=''; document.getElementById('adian-obs').value='';
+            data[truck].adiantamentos.push({ data: dataVal, valor, obs });
+            saveData();
+
+            document.getElementById('adian-data').value = '';
+            document.getElementById('adian-valor').value = '';
+            document.getElementById('adian-obs').value = '';
+
+            renderAdiantamentos();
+            renderRelatorio();
         }
-        window.renderAdiantamentos = function(){
+
+        function renderAdiantamentos() {
             const truck = getTruck();
             const adians = data[truck].adiantamentos;
             const tbody = document.getElementById('adian-tabla');
             const empty = document.getElementById('adian-empty');
-            if(adians.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
-            empty.style.display='none';
-            tbody.innerHTML = adians.map((a,i)=>`<tr><td>${formatDate(a.data)}</td><td class="text-right">${formatCurrency(a.valor)}</td><td>${a.obs}</td><td><button class="btn-sm" onclick="deleteAdia(${i})">×</button></td></tr>`).join('');
-        }
-        window.deleteAdia = function(i){ const truck=getTruck(); data[truck].adiantamentos.splice(i,1); saveData(); renderAdiantamentos(); renderRelatorio(); }
 
-        window.setComissao = function(){
+            if (adians.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            tbody.innerHTML = adians.map((a, i) => `
+                <tr>
+                    <td>${a.data}</td>
+                    <td class="text-right">${formatCurrency(a.valor)}</td>
+                    <td>${a.obs}</td>
+                    <td><button class="btn-sm" onclick="deleteAdia(${i})">×</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteAdia(i) {
+            const truck = getTruck();
+            data[truck].adiantamentos.splice(i, 1);
+            saveData();
+            renderAdiantamentos();
+            renderRelatorio();
+        }
+
+        function setComissao() {
             const tipo = document.getElementById('motor-tipo-comissao').value;
             const valor = parseFloat(document.getElementById('motor-valor-comissao').value);
-            if(!valor || valor<=0){ alert('Digite um valor válido'); return; }
+
+            if (!valor || valor <= 0) {
+                alert('Digite um valor válido');
+                return;
+            }
+
             const truck = getTruck();
-            data[truck].comissao = {tipo, valor};
-            saveData(); alert('Configuração salva na nuvem!'); renderRelatorio();
+            data[truck].comissao = { tipo, valor };
+            saveData();
+
+            alert('Configuração salva com sucesso!');
+            renderRelatorio();
         }
 
-        window.renderRelatorio = function(){
+        // Relatório
+        function renderRelatorio() {
             const truck = getTruck();
-            if(!data[truck]) return;
             const fats = data[truck].faturamento;
             const gastos = data[truck].gastos;
             const adians = data[truck].adiantamentos;
             const comissao = data[truck].comissao;
-            const totalFat = fats.reduce((s,f)=>s+f.valor,0);
-            const totalGasto = gastos.reduce((s,g)=>s+g.valor,0);
-            const totalAdian = adians.reduce((s,a)=>s+a.valor,0);
+
+            const totalFat = fats.reduce((sum, f) => sum + f.valor, 0);
+            const totalGasto = gastos.reduce((sum, g) => sum + g.valor, 0);
+            const totalAdian = adians.reduce((sum, a) => sum + a.valor, 0);
+
             const lucro = totalFat - totalGasto;
+
             let comissaoDev = 0;
-            if(comissao.tipo==='percentual') comissaoDev = (totalFat * comissao.valor)/100;
-            else comissaoDev = comissao.valor * fats.length;
+            if (comissao.tipo === 'percentual') {
+                comissaoDev = (totalFat * comissao.valor) / 100;
+            } else {
+                comissaoDev = comissao.valor * fats.length;
+            }
+
             const saldoMotor = comissaoDev - totalAdian;
+
             document.getElementById('rel-total-fat').textContent = formatCurrency(totalFat);
             document.getElementById('rel-total-gasto').textContent = formatCurrency(totalGasto);
             document.getElementById('rel-comissao').textContent = formatCurrency(comissaoDev);
             document.getElementById('rel-adiantamentos').textContent = formatCurrency(totalAdian);
             document.getElementById('rel-comissao-devida').textContent = formatCurrency(comissaoDev);
             document.getElementById('rel-ja-adiantado').textContent = formatCurrency(totalAdian);
-            const lucroEl = document.getElementById('rel-lucro'); lucroEl.textContent = formatCurrency(lucro); lucroEl.style.color = lucro>=0?'#28a745':'#dc3545';
-            const saldoEl = document.getElementById('rel-saldo-motorista'); saldoEl.textContent = formatCurrency(saldoMotor); saldoEl.style.color = saldoMotor>=0?'#dc3545':'#28a745';
-            const resumoEl = document.getElementById('rel-resumo');
-            const tiposMap = {}; gastos.forEach(g=>{ tiposMap[g.tipo]=(tiposMap[g.tipo]||0)+g.valor; });
-            if(Object.keys(tiposMap).length===0){ resumoEl.innerHTML='<div class="empty-state">Sem gastos registrados</div>'; }
-            else{ resumoEl.innerHTML = Object.entries(tiposMap).map(([tipo,valor])=>`<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e0e0e0;"><span style="text-transform:capitalize;">${tipo}</span><span style="font-weight:600;">${formatCurrency(valor)}</span></div>`).join(''); }
-        }
 
-        window.exportarDados = function(){
-            const truck = getTruck();
-            const fats = data[truck].faturamento; const gastos = data[truck].gastos; const adians = data[truck].adiantamentos;
-            let csv='Data,Tipo,Valor,Descrição\n';
-            fats.forEach(f=>{ csv+=`${f.data},Faturamento,${f.valor},"${f.descricao}"\n`; });
-            gastos.forEach(g=>{ csv+=`${g.data},${g.tipo},${g.valor},"${g.descricao}"\n`; });
-            adians.forEach(a=>{ csv+=`${a.data},Adiantamento,${a.valor},"${a.obs}"\n`; });
-            const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
-            const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`relatorio_${truck}_${new Date().toISOString().split('T')[0]}.csv`; link.click();
-        }
-        window.limparTudo = function(){
-            if(confirm('Tem certeza que deseja limpar todos os dados deste caminhão na NUVEM? Esta ação não pode ser desfeita.')){
-                const truck=getTruck();
-                data[truck]={faturamento:[], gastos:[], adiantamentos:[], comissao:{tipo:'percentual',valor:10}};
-                saveData(); renderFaturamento(); renderGastos(); renderAdiantamentos(); renderRelatorio();
-                alert('Dados limpos na nuvem!');
+            const lucroEl = document.getElementById('rel-lucro');
+            lucroEl.textContent = formatCurrency(lucro);
+            lucroEl.style.color = lucro >= 0 ? '#28a745' : '#dc3545';
+
+            const saldoEl = document.getElementById('rel-saldo-motorista');
+            saldoEl.textContent = formatCurrency(saldoMotor);
+            saldoEl.style.color = saldoMotor >= 0 ? '#dc3545' : '#28a745';
+
+            const resumoEl = document.getElementById('rel-resumo');
+            const tiposMap = {};
+            gastos.forEach(g => {
+                tiposMap[g.tipo] = (tiposMap[g.tipo] || 0) + g.valor;
+            });
+
+            if (Object.keys(tiposMap).length === 0) {
+                resumoEl.innerHTML = '<div class="empty-state">Sem gastos registrados</div>';
+            } else {
+                resumoEl.innerHTML = Object.entries(tiposMap).map(([tipo, valor]) => `
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e0e0e0;">
+                        <span style="text-transform: capitalize;">${tipo}</span>
+                        <span style="font-weight: 600;">${formatCurrency(valor)}</span>
+                    </div>
+                `).join('');
             }
         }
 
-        // Troca de caminhão
-        document.getElementById('truck-select').addEventListener('change', ()=>{
-            const truck=getTruck();
-            if(!data[truck]) data[truck]={faturamento:[], gastos:[], adiantamentos:[], comissao:{tipo:'percentual',valor:10}};
-            document.getElementById('motor-tipo-comissao').value=data[truck].comissao.tipo;
-            document.getElementById('motor-valor-comissao').value=data[truck].comissao.valor;
-            renderFaturamento(); renderGastos(); renderAdiantamentos(); renderRelatorio();
-        });
+        function exportarDados() {
+            const truck = getTruck();
+            const fats = data[truck].faturamento;
+            const gastos = data[truck].gastos;
+            const adians = data[truck].adiantamentos;
+
+            let csv = 'Data,Tipo,Valor,Descrição\n';
+
+            fats.forEach(f => {
+                csv += `${f.data},Faturamento,${f.valor},"${f.descricao}"\n`;
+            });
+
+            gastos.forEach(g => {
+                csv += `${g.data},${g.tipo},${g.valor},"${g.descricao}"\n`;
+            });
+
+            adians.forEach(a => {
+                csv += `${a.data},Adiantamento,${a.valor},"${a.obs}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `relatorio_${truck}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        function limparTudo() {
+            if (confirm('Tem certeza que deseja limpar todos os dados deste caminhão? Esta ação não pode ser desfeita.')) {
+                const truck = getTruck();
+                data[truck] = { faturamento: [], gastos: [], adiantamentos: [], comissao: { tipo: 'percentual', valor: 10 } };
+                saveData();
+                renderFaturamento();
+                renderGastos();
+                renderAdiantamentos();
+                renderRelatorio();
+                alert('Dados limpos com sucesso!');
+            }
+        }
 
         // Inicializar
-        loadData();
+        const truck = getTruck();
+        const comissao = data[truck].comissao;
+        document.getElementById('motor-tipo-comissao').value = comissao.tipo;
+        document.getElementById('motor-valor-comissao').value = comissao.valor;
+
+        renderFaturamento();
+        renderGastos();
+        renderAdiantamentos();
+        renderRelatorio();
     </script>
-</body></html>
+</body>
+</html>
